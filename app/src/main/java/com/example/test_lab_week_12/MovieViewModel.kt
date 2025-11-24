@@ -9,22 +9,28 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 
-class MovieViewModel(private val movieRepository: MovieRepository)
-    : ViewModel() {
-    private val _popularMovies = MutableStateFlow(
-        emptyList<Movie>()
-    )
+class MovieViewModel(private val movieRepository: MovieRepository) : ViewModel() {
+
+    private val _popularMovies = MutableStateFlow(emptyList<Movie>())
     val popularMovies: StateFlow<List<Movie>> = _popularMovies
+
     private val _error = MutableStateFlow("")
     val error: StateFlow<String> = _error
 
+    init {
+        // ✅ begitu ViewModel dibuat, langsung fetch
+        fetchPopularMovies()
+    }
+
     private fun fetchPopularMovies() {
         viewModelScope.launch(Dispatchers.IO) {
-            movieRepository.fetchMovies().catch {
-                _error.value = "An exception occurred: ${it.message}"
-            }.collect {
-                _popularMovies.value = it
-            }
+            movieRepository.fetchMovies()
+                .catch { e ->
+                    _error.value = "An exception occurred: ${e.message}"
+                }
+                .collect { movies ->
+                    _popularMovies.value = movies
+                }
         }
     }
 }
