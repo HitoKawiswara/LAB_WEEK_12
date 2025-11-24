@@ -1,14 +1,18 @@
 package com.example.test_lab_week_12
 
+import android.R.id.message
 import android.content.Intent
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.RecyclerView
 import com.example.test_lab_week_12.model.Movie
 import com.google.android.material.snackbar.Snackbar
-import java.util.Calendar // ✅ use java.util.Calendar
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
 
@@ -39,28 +43,27 @@ class MainActivity : AppCompatActivity() {
             }
         )[MovieViewModel::class.java]
 
-        movieViewModel.popularMovies.observe(this) { popularMovies ->
-            val movies = popularMovies.orEmpty() // ✅ handle null safely
-
-            val currentYear = Calendar.getInstance()
-                .get(Calendar.YEAR)
-                .toString()
-
-            movieAdapter.addMovies(
-                movies
-                    .filter { movie ->
-                        // aman dari null
-                        movie.releaseDate?.startsWith(currentYear) == true
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    movieViewModel.popularMovies.collect { movies ->
+                        movieAdapter.addMovies(movies)
                     }
-                    .sortedByDescending { it.popularity }
-            )
-        }
-
-        movieViewModel.error.observe(this) { error ->
-            if (error.isNotEmpty()) {
-                Snackbar.make(recyclerView, error, Snackbar.LENGTH_LONG).show()
+                }
+                launch {
+// collect the error message from the StateFlow
+                    movieViewModel.error.collect { error ->
+// if an error occurs, show a Snackbar with the error
+                        message
+                        if (error.isNotEmpty()) Snackbar
+                            .make(
+                                recyclerView, error, Snackbar.LENGTH_LONG
+                            ).show()
+                    }
+                }
             }
         }
+
     }
 
     private fun openMovieDetails(movie: Movie) {
